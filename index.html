@@ -6,39 +6,60 @@
     <title>Agro Nexus SAC - Sistema de Facturación</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
 </head>
 <body>
-    <!-- Login -->
+    <!-- LOGIN -->
     <div id="loginContainer" class="login-container">
         <div class="login-box">
-            <img src="https://via.placeholder.com/150x80/2e7d32/ffffff?text=AGRO+NEXUS" alt="Logo" class="login-logo">
-            <h2>Sistema de Facturación</h2>
+            <div class="login-logo-container">
+                <div class="logo-icon">🌱</div>
+                <h1 class="login-title">Agro Nexus <span>SAC</span></h1>
+                <p class="login-subtitle">Sistema de Facturación</p>
+            </div>
             <form id="loginForm">
-                <select id="rolUsuario" required>
-                    <option value="">Seleccionar Rol</option>
-                    <option value="vendedor">Vendedor</option>
-                    <option value="propietario">Propietario</option>
-                </select>
-                <input type="text" id="usuarioLogin" placeholder="Usuario" required>
-                <input type="password" id="passwordLogin" placeholder="Contraseña" required>
-                <button type="submit">Ingresar</button>
-                <p class="login-info">Vendedor: user / 1234 | Propietario: admin / 5678</p>
+                <div class="form-group">
+                    <label>👤 Usuario</label>
+                    <input type="text" id="usuarioLogin" placeholder="Ingresa tu usuario" required>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Contraseña</label>
+                    <input type="password" id="passwordLogin" placeholder="Ingresa tu contraseña" required>
+                </div>
+                <div class="form-group">
+                    <label>🎯 Rol</label>
+                    <select id="rolUsuario" required>
+                        <option value="">Seleccionar Rol</option>
+                        <option value="vendedor">👨‍💼 Vendedor</option>
+                        <option value="propietario">👔 Propietario</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">🚀 Ingresar al Sistema</button>
+                <div class="login-help">
+                    <p><strong>📝 Credenciales de prueba:</strong></p>
+                    <p>👨‍💼 Vendedor: <code>user</code> / <code>1234</code></p>
+                    <p>👔 Propietario: <code>admin</code> / <code>5678</code></p>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Sistema Principal -->
+    <!-- SISTEMA PRINCIPAL -->
     <div id="mainContainer" style="display:none;">
         <header>
             <div class="header-content">
                 <div class="logo-header">
-                    <h1>🌱 Agro Nexus SAC</h1>
-                    <span>Sistema de Facturación</span>
+                    <span class="logo-icon-small">🌱</span>
+                    <div>
+                        <h1>Agro Nexus <span>SAC</span></h1>
+                        <small>Sistema de Facturación</small>
+                    </div>
                 </div>
                 <div class="user-info">
-                    <span id="usuarioActual">Usuario</span>
-                    <span id="rolActual" class="rol-badge">Vendedor</span>
-                    <button onclick="cerrarSesion()" class="btn-logout">Cerrar Sesión</button>
+                    <span class="user-name" id="usuarioActual">Usuario</span>
+                    <span class="rol-badge" id="rolActual">VENDEDOR</span>
+                    <button onclick="cerrarSesion()" class="btn-logout">🚪 Salir</button>
                 </div>
             </div>
         </header>
@@ -47,27 +68,32 @@
             <button class="tab-btn active" data-tab="ventas">💳 Ventas</button>
             <button class="tab-btn" data-tab="inventario">📦 Inventario</button>
             <button class="tab-btn" data-tab="reportes">📊 Reportes</button>
-            <button class="tab-btn" data-tab="configuracion">⚙️ Configuración</button>
+            <button class="tab-btn" data-tab="configuracion" id="tabConfig">⚙️ Configuración</button>
         </nav>
 
         <main>
-            <!-- TAB VENTAS -->
+            <!-- VENTAS -->
             <section id="ventas" class="tab-content active">
                 <div class="ventas-container">
                     <div class="factura-form">
-                        <h2>Nueva Factura / Boleta</h2>
+                        <div class="factura-header">
+                            <h2>🧾 Nueva Factura / Boleta</h2>
+                            <div class="factura-info">
+                                <span id="fechaActual"></span>
+                            </div>
+                        </div>
                         
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tipo Documento</label>
                                 <select id="tipoDocumento">
-                                    <option value="boleta">Boleta</option>
-                                    <option value="factura">Factura</option>
+                                    <option value="boleta">📄 Boleta</option>
+                                    <option value="factura">📄 Factura</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>N° Documento</label>
-                                <input type="text" id="numeroDoc" value="B001-0001" readonly>
+                                <input type="text" id="numeroDoc" readonly>
                             </div>
                         </div>
 
@@ -93,17 +119,17 @@
                             </div>
                         </div>
 
-                        <h3>Productos</h3>
+                        <h3>📋 Productos</h3>
                         <div class="productos-table">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Código</th>
+                                        <th style="width:80px;">Código</th>
                                         <th>Producto</th>
-                                        <th>Cantidad</th>
-                                        <th>Precio Unit.</th>
-                                        <th>Subtotal</th>
-                                        <th>Acción</th>
+                                        <th style="width:80px;">Cant.</th>
+                                        <th style="width:120px;">Precio</th>
+                                        <th style="width:120px;">Subtotal</th>
+                                        <th style="width:50px;">✖</th>
                                     </tr>
                                 </thead>
                                 <tbody id="detalleFactura">
@@ -117,7 +143,7 @@
                                     </tr>
                                 </tbody>
                             </table>
-                            <button onclick="agregarFila()" class="btn-agregar">+ Agregar Producto</button>
+                            <button onclick="agregarFila()" class="btn-agregar">➕ Agregar Producto</button>
                         </div>
 
                         <div class="totales">
@@ -130,32 +156,33 @@
                                 <span id="igvTotal">S/ 0.00</span>
                             </div>
                             <div class="total-row total-final">
-                                <span>Total:</span>
+                                <span>💰 Total:</span>
                                 <span id="totalFinal">S/ 0.00</span>
                             </div>
                             <div class="total-row">
-                                <span>Total en Letras:</span>
+                                <span>📝 Total en Letras:</span>
                                 <span id="totalLetras">CERO CON 00/100 SOLES</span>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Método de Pago</label>
+                                <label>💳 Método de Pago</label>
                                 <select id="metodoPago">
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="yape">Yape</option>
-                                    <option value="plin">Plin</option>
-                                    <option value="transferencia">Transferencia</option>
+                                    <option value="efectivo">💵 Efectivo</option>
+                                    <option value="yape">📱 Yape</option>
+                                    <option value="plin">📱 Plin</option>
+                                    <option value="transferencia">🏦 Transferencia</option>
+                                    <option value="tarjeta">💳 Tarjeta</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Monto Recibido</label>
+                                <label>💰 Monto Recibido</label>
                                 <input type="number" id="montoRecibido" step="0.01" placeholder="0.00">
                             </div>
                             <div class="form-group">
-                                <label>Vuelto</label>
-                                <input type="text" id="vuelto" readonly>
+                                <label>🔄 Vuelto</label>
+                                <input type="text" id="vuelto" readonly value="S/ 0.00">
                             </div>
                         </div>
 
@@ -167,23 +194,27 @@
                     </div>
 
                     <div class="ventas-recientes">
-                        <h3>Ventas Recientes</h3>
+                        <h3>🕐 Ventas Recientes</h3>
                         <div id="listaVentas">
-                            <p class="sin-ventas">No hay ventas registradas</p>
+                            <p class="sin-ventas">📭 No hay ventas registradas</p>
+                        </div>
+                        <div class="total-ventas-dia">
+                            <span>💰 Total hoy:</span>
+                            <span id="totalVentasHoy">S/ 0.00</span>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- TAB INVENTARIO -->
+            <!-- INVENTARIO -->
             <section id="inventario" class="tab-content">
                 <div class="inventario-container">
                     <div class="inventario-header">
                         <h2>📦 Control de Inventario</h2>
-                        <button onclick="mostrarModalProducto()" class="btn-agregar-producto">+ Agregar Producto</button>
+                        <button onclick="mostrarModalProducto()" class="btn-agregar-producto">➕ Agregar Producto</button>
                     </div>
                     
-                    <div class="alertas-stock">
+                    <div class="alertas-stock" id="alertasContainer">
                         <h4>⚠️ Alertas de Stock Bajo</h4>
                         <div id="alertasStock"></div>
                     </div>
@@ -209,63 +240,63 @@
                 </div>
             </section>
 
-            <!-- TAB REPORTES -->
+            <!-- REPORTES -->
             <section id="reportes" class="tab-content">
                 <div class="reportes-container">
                     <h2>📊 Reportes y Gráficos</h2>
                     
                     <div class="filtros-reportes">
                         <div class="form-group">
-                            <label>Desde</label>
+                            <label>📅 Desde</label>
                             <input type="date" id="fechaDesde">
                         </div>
                         <div class="form-group">
-                            <label>Hasta</label>
+                            <label>📅 Hasta</label>
                             <input type="date" id="fechaHasta">
                         </div>
-                        <button onclick="actualizarReportes()" class="btn-filtrar">Filtrar</button>
-                    </div>
-
-                    <div class="graficos-grid">
-                        <div class="grafico-card">
-                            <h4>Ventas por Día</h4>
-                            <canvas id="graficoVentas"></canvas>
-                        </div>
-                        <div class="grafico-card">
-                            <h4>Productos Más Vendidos</h4>
-                            <canvas id="graficoProductos"></canvas>
-                        </div>
-                        <div class="grafico-card">
-                            <h4>Métodos de Pago</h4>
-                            <canvas id="graficoPagos"></canvas>
-                        </div>
+                        <button onclick="actualizarReportes()" class="btn-filtrar">🔍 Filtrar</button>
                     </div>
 
                     <div class="resumen-reportes">
                         <div class="resumen-card">
-                            <h4>Total Ventas</h4>
+                            <h4>💰 Total Ventas</h4>
                             <span id="totalVentasReporte">S/ 0.00</span>
                         </div>
                         <div class="resumen-card">
-                            <h4>N° Ventas</h4>
+                            <h4>🧾 N° Ventas</h4>
                             <span id="numVentasReporte">0</span>
                         </div>
                         <div class="resumen-card">
-                            <h4>Productos Vendidos</h4>
+                            <h4>📦 Productos Vendidos</h4>
                             <span id="productosVendidosReporte">0</span>
+                        </div>
+                    </div>
+
+                    <div class="graficos-grid">
+                        <div class="grafico-card">
+                            <h4>📈 Ventas por Día</h4>
+                            <canvas id="graficoVentas"></canvas>
+                        </div>
+                        <div class="grafico-card">
+                            <h4>🏆 Productos Más Vendidos</h4>
+                            <canvas id="graficoProductos"></canvas>
+                        </div>
+                        <div class="grafico-card">
+                            <h4>💳 Métodos de Pago</h4>
+                            <canvas id="graficoPagos"></canvas>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- TAB CONFIGURACIÓN -->
+            <!-- CONFIGURACIÓN -->
             <section id="configuracion" class="tab-content">
                 <div class="configuracion-container">
                     <h2>⚙️ Configuración de la Empresa</h2>
                     
                     <div class="config-grid">
                         <div class="config-card">
-                            <h3>Datos de la Empresa</h3>
+                            <h3>🏢 Datos de la Empresa</h3>
                             <div class="form-group">
                                 <label>Nombre Empresa</label>
                                 <input type="text" id="empNombre" value="Agro Nexus SAC">
@@ -286,31 +317,22 @@
                                 <label>Email</label>
                                 <input type="email" id="empEmail" value="info@agronexus.com">
                             </div>
-                            <button onclick="guardarConfiguracion()" class="btn-guardar-config">Guardar Configuración</button>
+                            <button onclick="guardarConfiguracion()" class="btn-guardar-config">💾 Guardar Configuración</button>
                         </div>
 
                         <div class="config-card">
-                            <h3>Logo de la Empresa</h3>
+                            <h3>🖼️ Logo de la Empresa</h3>
                             <div class="logo-preview">
                                 <img id="logoPreview" src="https://via.placeholder.com/200x100/2e7d32/ffffff?text=AGRO+NEXUS" alt="Logo">
                             </div>
                             <input type="file" id="logoInput" accept="image/*" onchange="cargarLogo(event)">
-                            <p class="config-info">Sube tu logo en formato PNG o JPG</p>
+                            <p class="config-info">📌 Sube tu logo en formato PNG o JPG</p>
                         </div>
 
                         <div class="config-card">
-                            <h3>Usuarios del Sistema</h3>
-                            <div id="listaUsuarios">
-                                <div class="usuario-item">
-                                    <span>👤 Vendedor (user)</span>
-                                    <span class="rol-tag">Vendedor</span>
-                                </div>
-                                <div class="usuario-item">
-                                    <span>👤 Propietario (admin)</span>
-                                    <span class="rol-tag">Propietario</span>
-                                </div>
-                            </div>
-                            <button onclick="mostrarModalUsuario()" class="btn-agregar-usuario">+ Agregar Usuario</button>
+                            <h3>👥 Usuarios del Sistema</h3>
+                            <div id="listaUsuarios"></div>
+                            <button onclick="mostrarModalUsuario()" class="btn-agregar-usuario">➕ Agregar Usuario</button>
                         </div>
                     </div>
                 </div>
@@ -318,67 +340,71 @@
         </main>
     </div>
 
-    <!-- Modal Producto -->
+    <!-- MODAL PRODUCTO -->
     <div id="modalProducto" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close" onclick="cerrarModalProducto()">&times;</span>
-            <h3>Agregar Producto</h3>
+            <h3>➕ Agregar Producto</h3>
             <form id="formProducto">
                 <div class="form-group">
                     <label>Código</label>
-                    <input type="text" id="prodCodigo" required>
+                    <input type="text" id="prodCodigo" required placeholder="Ej: P001">
                 </div>
                 <div class="form-group">
                     <label>Nombre Producto</label>
-                    <input type="text" id="prodNombre" required>
+                    <input type="text" id="prodNombre" required placeholder="Nombre del producto">
                 </div>
                 <div class="form-group">
                     <label>Categoría</label>
-                    <input type="text" id="prodCategoria" placeholder="Ej: Fertilizantes, Semillas, etc.">
+                    <input type="text" id="prodCategoria" placeholder="Ej: Fertilizantes">
                 </div>
-                <div class="form-group">
-                    <label>Stock Inicial</label>
-                    <input type="number" id="prodStock" value="0" min="0">
+                <div class="form-row-modal">
+                    <div class="form-group">
+                        <label>Stock Inicial</label>
+                        <input type="number" id="prodStock" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Stock Mínimo</label>
+                        <input type="number" id="prodStockMinimo" value="5">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Precio Compra</label>
-                    <input type="number" id="prodPrecioCompra" step="0.01" placeholder="0.00">
+                <div class="form-row-modal">
+                    <div class="form-group">
+                        <label>Precio Compra</label>
+                        <input type="number" id="prodPrecioCompra" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio Venta</label>
+                        <input type="number" id="prodPrecioVenta" step="0.01" placeholder="0.00" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Precio Venta</label>
-                    <input type="number" id="prodPrecioVenta" step="0.01" placeholder="0.00" required>
-                </div>
-                <div class="form-group">
-                    <label>Stock Mínimo (Alerta)</label>
-                    <input type="number" id="prodStockMinimo" value="5">
-                </div>
-                <button type="submit">Agregar Producto</button>
+                <button type="submit" class="btn-primary">✅ Agregar Producto</button>
             </form>
         </div>
     </div>
 
-    <!-- Modal Usuario -->
+    <!-- MODAL USUARIO -->
     <div id="modalUsuario" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close" onclick="cerrarModalUsuario()">&times;</span>
-            <h3>Agregar Usuario</h3>
+            <h3>➕ Agregar Usuario</h3>
             <form id="formUsuario">
                 <div class="form-group">
                     <label>Usuario</label>
-                    <input type="text" id="nuevoUsuario" required>
+                    <input type="text" id="nuevoUsuario" required placeholder="Nombre de usuario">
                 </div>
                 <div class="form-group">
                     <label>Contraseña</label>
-                    <input type="password" id="nuevaPassword" required>
+                    <input type="password" id="nuevaPassword" required placeholder="Contraseña">
                 </div>
                 <div class="form-group">
                     <label>Rol</label>
                     <select id="nuevoRol">
-                        <option value="vendedor">Vendedor</option>
-                        <option value="propietario">Propietario</option>
+                        <option value="vendedor">👨‍💼 Vendedor</option>
+                        <option value="propietario">👔 Propietario</option>
                     </select>
                 </div>
-                <button type="submit">Agregar Usuario</button>
+                <button type="submit" class="btn-primary">✅ Agregar Usuario</button>
             </form>
         </div>
     </div>
