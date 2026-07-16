@@ -1,19 +1,20 @@
 // ============================================
-// SISTEMA DE FACTURACIÓN - AGRO NEXUS SAC
+// AGRO NEXUS SAC - SISTEMA DE FACTURACIÓN
+// Script Mejorado y Corregido
 // ============================================
 
-// ===== DATOS DE PRUEBA =====
+// ===== DATOS INICIALES =====
 let productos = [
-    { codigo: 'P001', nombre: 'Fertilizante NPK', categoria: 'Fertilizantes', stock: 50, precioCompra: 45.00, precioVenta: 65.00, stockMinimo: 10 },
-    { codigo: 'P002', nombre: 'Semilla de Maíz', categoria: 'Semillas', stock: 30, precioCompra: 80.00, precioVenta: 120.00, stockMinimo: 5 },
-    { codigo: 'P003', nombre: 'Herbicida Glifosato', categoria: 'Herbicidas', stock: 20, precioCompra: 55.00, precioVenta: 85.00, stockMinimo: 8 },
-    { codigo: 'P004', nombre: 'Abono Orgánico', categoria: 'Abonos', stock: 100, precioCompra: 30.00, precioVenta: 45.00, stockMinimo: 20 },
-    { codigo: 'P005', nombre: 'Pesticida Natural', categoria: 'Pesticidas', stock: 15, precioCompra: 70.00, precioVenta: 110.00, stockMinimo: 5 }
+    { codigo: 'P001', nombre: 'Fertilizante NPK 20-20-20', categoria: 'Fertilizantes', stock: 50, precioCompra: 45.00, precioVenta: 65.00, stockMinimo: 10 },
+    { codigo: 'P002', nombre: 'Semilla de Maíz Híbrido', categoria: 'Semillas', stock: 30, precioCompra: 80.00, precioVenta: 120.00, stockMinimo: 5 },
+    { codigo: 'P003', nombre: 'Herbicida Glifosato 4L', categoria: 'Herbicidas', stock: 20, precioCompra: 55.00, precioVenta: 85.00, stockMinimo: 8 },
+    { codigo: 'P004', nombre: 'Abono Orgánico 25kg', categoria: 'Abonos', stock: 100, precioCompra: 30.00, precioVenta: 45.00, stockMinimo: 20 },
+    { codigo: 'P005', nombre: 'Pesticida Natural 1L', categoria: 'Pesticidas', stock: 15, precioCompra: 70.00, precioVenta: 110.00, stockMinimo: 5 }
 ];
 
 let ventas = [];
-let numeroFactura = 1;
 let productosVendidos = [];
+let numeroFactura = 1;
 
 // ===== USUARIOS =====
 const usuarios = {
@@ -34,29 +35,61 @@ let configEmpresa = {
 };
 
 // ============================================
+// CARGA DE DATOS (localStorage)
+// ============================================
+
+function guardarDatos() {
+    try {
+        const datos = { productos, ventas, productosVendidos, configEmpresa, usuarios };
+        localStorage.setItem('agroNexusData', JSON.stringify(datos));
+    } catch (e) {
+        console.log('Error al guardar:', e);
+    }
+}
+
+function cargarDatos() {
+    try {
+        const saved = localStorage.getItem('agroNexusData');
+        if (saved) {
+            const datos = JSON.parse(saved);
+            productos = datos.productos || productos;
+            ventas = datos.ventas || [];
+            productosVendidos = datos.productosVendidos || [];
+            configEmpresa = datos.configEmpresa || configEmpresa;
+        }
+    } catch (e) {
+        console.log('Error al cargar:', e);
+    }
+}
+
+cargarDatos();
+
+// ============================================
 // FUNCIONES DE LOGIN
 // ============================================
 
 document.getElementById('loginForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const usuario = document.getElementById('usuarioLogin').value;
-    const password = document.getElementById('passwordLogin').value;
+    
+    const usuario = document.getElementById('usuarioLogin').value.trim();
+    const password = document.getElementById('passwordLogin').value.trim();
     const rol = document.getElementById('rolUsuario').value;
 
     if (!usuario || !password || !rol) {
-        alert('Por favor, complete todos los campos');
+        mostrarAlerta('⚠️ Por favor, complete todos los campos', 'error');
         return;
     }
 
+    // Verificar usuario
     if (usuarios[usuario] && usuarios[usuario].password === password) {
         if (usuarios[usuario].rol !== rol) {
-            alert(`Error: Este usuario es ${usuarios[usuario].rol}, no ${rol}`);
+            mostrarAlerta(`❌ Error: Este usuario es ${usuarios[usuario].rol}, no ${rol}`, 'error');
             return;
         }
         usuarioActual = { nombre: usuario, rol: usuarios[usuario].rol };
         iniciarSistema();
     } else {
-        alert('Usuario o contraseña incorrectos');
+        mostrarAlerta('❌ Usuario o contraseña incorrectos', 'error');
     }
 });
 
@@ -68,17 +101,25 @@ function iniciarSistema() {
     
     // Restringir según rol
     if (usuarioActual.rol === 'vendedor') {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            if (btn.dataset.tab === 'configuracion') {
-                btn.style.display = 'none';
-            }
-        });
+        document.getElementById('tabConfig').style.display = 'none';
+    } else {
+        document.getElementById('tabConfig').style.display = 'inline-block';
     }
+    
+    // Fecha actual
+    document.getElementById('fechaActual').textContent = new Date().toLocaleDateString('es-PE', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
     
     actualizarInventario();
     actualizarAlertasStock();
     actualizarVentasRecientes();
     actualizarNumeroFactura();
+    calcularTotales();
+    mostrarAlerta('✅ Bienvenido al sistema, ' + usuarioActual.nombre, 'success');
 }
 
 function cerrarSesion() {
@@ -86,6 +127,33 @@ function cerrarSesion() {
     document.getElementById('loginContainer').style.display = 'flex';
     document.getElementById('mainContainer').style.display = 'none';
     document.getElementById('loginForm').reset();
+}
+
+// ===== ALERTAS =====
+function mostrarAlerta(mensaje, tipo) {
+    const alerta = document.createElement('div');
+    alerta.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        animation: slideUp 0.3s ease;
+        max-width: 400px;
+        background: ${tipo === 'error' ? '#e53935' : '#43a047'};
+        color: white;
+    `;
+    alerta.textContent = mensaje;
+    document.body.appendChild(alerta);
+    setTimeout(() => {
+        alerta.style.opacity = '0';
+        alerta.style.transition = 'opacity 0.5s';
+        setTimeout(() => alerta.remove(), 500);
+    }, 4000);
 }
 
 // ============================================
@@ -114,7 +182,7 @@ function agregarFila() {
     const tbody = document.getElementById('detalleFactura');
     const newRow = document.createElement('tr');
     newRow.innerHTML = `
-        <td><input type="text" class="codigo-producto" placeholder="Código"></td>
+        <td><input type="text" class="codigo-producto" placeholder="Código" list="productosList"></td>
         <td><input type="text" class="nombre-producto" placeholder="Producto"></td>
         <td><input type="number" class="cantidad-producto" value="1" min="1"></td>
         <td><input type="number" class="precio-producto" step="0.01" placeholder="0.00"></td>
@@ -123,11 +191,13 @@ function agregarFila() {
     `;
     tbody.appendChild(newRow);
     
-    // Agregar event listeners
     const inputs = newRow.querySelectorAll('input');
     inputs.forEach(input => {
         input.addEventListener('input', calcularTotales);
+        input.addEventListener('change', calcularTotales);
     });
+    
+    calcularTotales();
 }
 
 function eliminarFila(btn) {
@@ -136,7 +206,7 @@ function eliminarFila(btn) {
         btn.closest('tr').remove();
         calcularTotales();
     } else {
-        alert('Debe haber al menos un producto');
+        mostrarAlerta('⚠️ Debe haber al menos un producto', 'error');
     }
 }
 
@@ -164,11 +234,13 @@ function calcularTotales() {
     const montoRecibido = parseFloat(document.getElementById('montoRecibido').value) || 0;
     if (montoRecibido > 0) {
         const vuelto = montoRecibido - total;
-        document.getElementById('vuelto').value = vuelto >= 0 ? `S/ ${vuelto.toFixed(2)}` : 'Monto insuficiente';
+        document.getElementById('vuelto').value = vuelto >= 0 ? `S/ ${vuelto.toFixed(2)}` : '❌ Monto insuficiente';
+    } else {
+        document.getElementById('vuelto').value = 'S/ 0.00';
     }
 }
 
-// Event listeners para cálculos automáticos
+// Event listeners
 document.addEventListener('input', function(e) {
     if (e.target.classList.contains('cantidad-producto') || 
         e.target.classList.contains('precio-producto')) {
@@ -185,6 +257,7 @@ document.addEventListener('input', function(e) {
 
 function numeroALetras(num) {
     const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+    const especiales = ['', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
     const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
     const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
     
@@ -202,22 +275,18 @@ function numeroALetras(num) {
         if (miles === 1) {
             letras += 'MIL ';
         } else {
-            letras += convertirCentenas(miles) + ' MIL ';
+            letras += convertirCentenas(miles, unidades, especiales, decenas, centenas) + ' MIL ';
         }
     }
     
     if (resto > 0) {
-        letras += convertirCentenas(resto);
+        letras += convertirCentenas(resto, unidades, especiales, decenas, centenas);
     }
     
     return `${letras.trim()} CON ${decimal}/100 SOLES`;
 }
 
-function convertirCentenas(num) {
-    const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
-    const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-    const especiales = ['', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
-    
+function convertirCentenas(num, unidades, especiales, decenas, centenas) {
     let letras = '';
     const c = Math.floor(num / 100);
     const d = Math.floor((num % 100) / 10);
@@ -227,7 +296,6 @@ function convertirCentenas(num) {
         if (c === 1 && d === 0 && u === 0) {
             letras += 'CIEN ';
         } else {
-            const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
             letras += centenas[c] + ' ';
         }
     }
@@ -265,7 +333,6 @@ function generarPDF() {
     const telefonoCliente = document.getElementById('telefonoCliente').value || '---';
     const metodoPago = document.getElementById('metodoPago').value;
     
-    // Obtener productos
     const filas = document.querySelectorAll('#detalleFactura tr');
     let productosFactura = [];
     let subtotal = 0;
@@ -283,48 +350,48 @@ function generarPDF() {
     });
     
     if (productosFactura.length === 0) {
-        alert('Agregue al menos un producto válido');
+        mostrarAlerta('⚠️ Agregue al menos un producto válido', 'error');
         return;
     }
     
     const igv = subtotal * 0.18;
     const total = subtotal + igv;
     const totalLetras = numeroALetras(total);
-    
-    // Crear HTML para PDF
     const logo = configEmpresa.logo || 'https://via.placeholder.com/150x80/2e7d32/ffffff?text=AGRO+NEXUS';
     
     const pdfContent = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; border: 1px solid #ddd;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 15px; margin-bottom: 20px;">
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; border: 1px solid #ddd; background: white;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #2e7d32; padding-bottom: 15px; margin-bottom: 20px;">
                 <div>
-                    <img src="${logo}" alt="Logo" style="max-height: 80px;">
+                    <img src="${logo}" alt="Logo" style="max-height: 70px; margin-bottom: 5px;">
                     <h2 style="color: #1b5e20; margin: 5px 0;">${configEmpresa.nombre}</h2>
                     <p style="font-size: 12px; color: #666; margin: 2px 0;">RUC: ${configEmpresa.ruc}</p>
                     <p style="font-size: 12px; color: #666; margin: 2px 0;">${configEmpresa.direccion}</p>
-                    <p style="font-size: 12px; color: #666; margin: 2px 0;">Tel: ${configEmpresa.telefono} | Email: ${configEmpresa.email}</p>
+                    <p style="font-size: 12px; color: #666; margin: 2px 0;">Tel: ${configEmpresa.telefono} | ${configEmpresa.email}</p>
                 </div>
                 <div style="text-align: right;">
-                    <h1 style="color: #1b5e20; font-size: 24px;">${tipoDoc.toUpperCase()}</h1>
-                    <p style="font-size: 18px; font-weight: bold;">N° ${numeroDoc}</p>
-                    <p style="font-size: 12px; color: #666;">Fecha: ${new Date().toLocaleDateString()}</p>
+                    <h1 style="color: #1b5e20; font-size: 22px; text-transform: uppercase;">${tipoDoc}</h1>
+                    <p style="font-size: 18px; font-weight: bold; color: #1b5e20;">N° ${numeroDoc}</p>
+                    <p style="font-size: 12px; color: #666;">${new Date().toLocaleDateString('es-PE')}</p>
                 </div>
             </div>
             
-            <div style="margin-bottom: 20px; background: #f5f9f5; padding: 15px; border-radius: 5px;">
-                <p><strong>Cliente:</strong> ${nombreCliente}</p>
-                <p><strong>RUC/DNI:</strong> ${docCliente}</p>
-                <p><strong>Dirección:</strong> ${direccionCliente}</p>
-                <p><strong>Teléfono:</strong> ${telefonoCliente}</p>
-                <p><strong>Método de Pago:</strong> ${metodoPago.toUpperCase()}</p>
+            <div style="margin-bottom: 20px; background: #f5f9f5; padding: 15px; border-radius: 8px;">
+                <table style="width:100%; font-size:13px;">
+                    <tr><td style="padding:3px;"><strong>Cliente:</strong></td><td>${nombreCliente}</td></tr>
+                    <tr><td style="padding:3px;"><strong>RUC/DNI:</strong></td><td>${docCliente}</td></tr>
+                    <tr><td style="padding:3px;"><strong>Dirección:</strong></td><td>${direccionCliente}</td></tr>
+                    <tr><td style="padding:3px;"><strong>Teléfono:</strong></td><td>${telefonoCliente}</td></tr>
+                    <tr><td style="padding:3px;"><strong>Método de Pago:</strong></td><td>${metodoPago.toUpperCase()}</td></tr>
+                </table>
             </div>
             
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
                 <thead>
                     <tr style="background: #2e7d32; color: white;">
-                        <th style="padding: 10px; text-align: left; width: 80px;">Código</th>
+                        <th style="padding: 10px; text-align: left; width: 70px;">Código</th>
                         <th style="padding: 10px; text-align: left;">Producto</th>
-                        <th style="padding: 10px; text-align: center; width: 80px;">Cant.</th>
+                        <th style="padding: 10px; text-align: center; width: 70px;">Cant.</th>
                         <th style="padding: 10px; text-align: right; width: 100px;">Precio</th>
                         <th style="padding: 10px; text-align: right; width: 120px;">Subtotal</th>
                     </tr>
@@ -345,25 +412,24 @@ function generarPDF() {
             <div style="text-align: right; border-top: 2px solid #2e7d32; padding-top: 15px;">
                 <p style="font-size: 14px;"><strong>Subtotal:</strong> S/ ${subtotal.toFixed(2)}</p>
                 <p style="font-size: 14px;"><strong>IGV (18%):</strong> S/ ${igv.toFixed(2)}</p>
-                <p style="font-size: 20px; font-weight: bold; color: #1b5e20;"><strong>Total:</strong> S/ ${total.toFixed(2)}</p>
-                <p style="font-size: 14px; color: #666;"><strong>Total en Letras:</strong> ${totalLetras}</p>
+                <p style="font-size: 22px; font-weight: bold; color: #1b5e20;"><strong>Total:</strong> S/ ${total.toFixed(2)}</p>
+                <p style="font-size: 13px; color: #666;"><strong>Total en Letras:</strong> ${totalLetras}</p>
             </div>
             
-            <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; text-align: center; font-size: 12px; color: #666;">
+            <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; text-align: center; font-size: 11px; color: #666;">
                 <p>¡Gracias por su compra! - ${configEmpresa.nombre}</p>
-                <p>Documento electrónico generado el ${new Date().toLocaleString()}</p>
+                <p>Documento generado el ${new Date().toLocaleString('es-PE')}</p>
             </div>
         </div>
     `;
     
-    // Usar html2pdf para generar el PDF
     const element = document.createElement('div');
     element.innerHTML = pdfContent;
     document.body.appendChild(element);
     
     html2pdf()
         .set({
-            margin: 5,
+            margin: 8,
             filename: `${tipoDoc}_${numeroDoc}.pdf`,
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -372,6 +438,11 @@ function generarPDF() {
         .save()
         .then(() => {
             document.body.removeChild(element);
+            mostrarAlerta('✅ PDF generado exitosamente', 'success');
+        })
+        .catch(() => {
+            document.body.removeChild(element);
+            mostrarAlerta('❌ Error al generar PDF', 'error');
         });
 }
 
@@ -399,7 +470,6 @@ function guardarVenta() {
             productosFactura.push({ codigo, nombre, cantidad, precio, total });
             subtotal += total;
             
-            // Actualizar inventario
             const productoInventario = productos.find(p => p.codigo === codigo);
             if (productoInventario) {
                 productoInventario.stock -= cantidad;
@@ -409,7 +479,7 @@ function guardarVenta() {
     });
     
     if (productosFactura.length === 0) {
-        alert('Agregue al menos un producto válido');
+        mostrarAlerta('⚠️ Agregue al menos un producto válido', 'error');
         return;
     }
     
@@ -432,16 +502,14 @@ function guardarVenta() {
     ventas.push(venta);
     productosVendidos.push(...productosFactura);
     
-    // Guardar en localStorage
     guardarDatos();
-    
     actualizarInventario();
     actualizarAlertasStock();
     actualizarVentasRecientes();
     actualizarNumeroFactura();
     limpiarFactura();
     
-    alert('✅ Venta guardada exitosamente');
+    mostrarAlerta('✅ Venta guardada exitosamente', 'success');
 }
 
 // ============================================
@@ -452,13 +520,18 @@ function actualizarInventario() {
     const tbody = document.getElementById('listaInventario');
     tbody.innerHTML = '';
     
+    if (productos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#999;">📭 No hay productos registrados</td></tr>`;
+        return;
+    }
+    
     productos.forEach(p => {
         const tr = document.createElement('tr');
         const stockClass = p.stock <= p.stockMinimo ? 'stock-bajo' : '';
-        const margin = ((p.precioVenta - p.precioCompra) / p.precioCompra * 100).toFixed(1);
+        const margin = p.precioCompra > 0 ? ((p.precioVenta - p.precioCompra) / p.precioCompra * 100).toFixed(1) : '0';
         
         tr.innerHTML = `
-            <td>${p.codigo}</td>
+            <td><strong>${p.codigo}</strong></td>
             <td>${p.nombre}</td>
             <td>${p.categoria || '---'}</td>
             <td class="${stockClass}">${p.stock}</td>
@@ -466,8 +539,8 @@ function actualizarInventario() {
             <td>S/ ${p.precioVenta.toFixed(2)}</td>
             <td>${margin}%</td>
             <td>
-                <button onclick="editarProducto('${p.codigo}')" class="btn-editar">✏️</button>
-                <button onclick="eliminarProducto('${p.codigo}')" class="btn-eliminar-producto">🗑️</button>
+                <button onclick="editarProducto('${p.codigo}')" class="btn-editar" title="Editar">✏️</button>
+                <button onclick="eliminarProducto('${p.codigo}')" class="btn-eliminar-producto" title="Eliminar">🗑️</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -479,18 +552,22 @@ function actualizarAlertasStock() {
     const alertas = productos.filter(p => p.stock <= p.stockMinimo);
     
     if (alertas.length === 0) {
-        container.innerHTML = '<p style="color: #28a745;">✅ Todos los productos tienen stock suficiente</p>';
+        container.innerHTML = '<p style="color: #28a745; font-weight:600;">✅ Todos los productos tienen stock suficiente</p>';
     } else {
         container.innerHTML = alertas.map(p => `
             <div class="alerta-item">
-                <span>⚠️ <strong>${p.nombre}</strong> (Cód: ${p.codigo})</span>
-                <span>Stock: ${p.stock} (Mínimo: ${p.stockMinimo})</span>
+                <span>⚠️ <strong>${p.nombre}</strong> (${p.codigo})</span>
+                <span>Stock: ${p.stock} / Mín: ${p.stockMinimo}</span>
             </div>
         `).join('');
     }
 }
 
 function mostrarModalProducto() {
+    if (usuarioActual && usuarioActual.rol === 'vendedor') {
+        mostrarAlerta('❌ Solo el propietario puede agregar productos', 'error');
+        return;
+    }
     document.getElementById('modalProducto').style.display = 'flex';
     document.getElementById('formProducto').reset();
 }
@@ -502,54 +579,66 @@ function cerrarModalProducto() {
 document.getElementById('formProducto').addEventListener('submit', function(e) {
     e.preventDefault();
     
+    const codigo = document.getElementById('prodCodigo').value.trim().toUpperCase();
+    if (productos.find(p => p.codigo === codigo)) {
+        mostrarAlerta('⚠️ Ya existe un producto con ese código', 'error');
+        return;
+    }
+    
     const producto = {
-        codigo: document.getElementById('prodCodigo').value.trim().toUpperCase(),
+        codigo: codigo,
         nombre: document.getElementById('prodNombre').value.trim(),
-        categoria: document.getElementById('prodCategoria').value.trim(),
+        categoria: document.getElementById('prodCategoria').value.trim() || 'General',
         stock: parseInt(document.getElementById('prodStock').value) || 0,
         precioCompra: parseFloat(document.getElementById('prodPrecioCompra').value) || 0,
         precioVenta: parseFloat(document.getElementById('prodPrecioVenta').value) || 0,
         stockMinimo: parseInt(document.getElementById('prodStockMinimo').value) || 5
     };
     
-    if (productos.find(p => p.codigo === producto.codigo)) {
-        alert('⚠️ Ya existe un producto con ese código');
-        return;
-    }
-    
     productos.push(producto);
     guardarDatos();
     actualizarInventario();
     actualizarAlertasStock();
     cerrarModalProducto();
-    alert('✅ Producto agregado exitosamente');
+    mostrarAlerta('✅ Producto agregado exitosamente', 'success');
 });
 
 function editarProducto(codigo) {
+    if (usuarioActual && usuarioActual.rol === 'vendedor') {
+        mostrarAlerta('❌ Solo el propietario puede editar productos', 'error');
+        return;
+    }
+    
     const producto = productos.find(p => p.codigo === codigo);
     if (!producto) return;
     
-    // Implementar edición (usar prompt o modal)
-    const nuevoNombre = prompt('Nombre del producto:', producto.nombre);
-    if (nuevoNombre) producto.nombre = nuevoNombre;
+    const nuevoNombre = prompt('✏️ Nombre del producto:', producto.nombre);
+    if (nuevoNombre && nuevoNombre.trim()) producto.nombre = nuevoNombre.trim();
     
-    const nuevoPrecio = prompt('Nuevo precio de venta:', producto.precioVenta);
-    if (nuevoPrecio) producto.precioVenta = parseFloat(nuevoPrecio);
+    const nuevoPrecio = prompt('💰 Nuevo precio de venta (S/):', producto.precioVenta);
+    if (nuevoPrecio && !isNaN(parseFloat(nuevoPrecio))) producto.precioVenta = parseFloat(nuevoPrecio);
     
-    const nuevoStock = prompt('Nuevo stock:', producto.stock);
-    if (nuevoStock) producto.stock = parseInt(nuevoStock);
+    const nuevoStock = prompt('📦 Nuevo stock:', producto.stock);
+    if (nuevoStock && !isNaN(parseInt(nuevoStock))) producto.stock = parseInt(nuevoStock);
     
     guardarDatos();
     actualizarInventario();
     actualizarAlertasStock();
+    mostrarAlerta('✅ Producto actualizado', 'success');
 }
 
 function eliminarProducto(codigo) {
-    if (confirm('¿Está seguro de eliminar este producto?')) {
+    if (usuarioActual && usuarioActual.rol === 'vendedor') {
+        mostrarAlerta('❌ Solo el propietario puede eliminar productos', 'error');
+        return;
+    }
+    
+    if (confirm('⚠️ ¿Está seguro de eliminar este producto?')) {
         productos = productos.filter(p => p.codigo !== codigo);
         guardarDatos();
         actualizarInventario();
         actualizarAlertasStock();
+        mostrarAlerta('✅ Producto eliminado', 'success');
     }
 }
 
@@ -559,31 +648,46 @@ function eliminarProducto(codigo) {
 
 function actualizarVentasRecientes() {
     const container = document.getElementById('listaVentas');
+    const totalHoy = document.getElementById('totalVentasHoy');
+    
     if (ventas.length === 0) {
-        container.innerHTML = '<p class="sin-ventas">No hay ventas registradas</p>';
+        container.innerHTML = '<p class="sin-ventas">📭 No hay ventas registradas</p>';
+        totalHoy.textContent = 'S/ 0.00';
         return;
     }
     
-    const ultimas = ventas.slice(-5).reverse();
-    container.innerHTML = ultimas.map(v => `
-        <div class="venta-item">
-            <div class="venta-header">
-                <span>${v.tipo.toUpperCase()} N° ${v.numero}</span>
-                <span>S/ ${v.total.toFixed(2)}</span>
+    const hoy = new Date().toDateString();
+    let totalDia = 0;
+    
+    const ultimas = ventas.slice(-10).reverse();
+    container.innerHTML = ultimas.map(v => {
+        const fechaVenta = new Date(v.fecha);
+        if (fechaVenta.toDateString() === hoy) {
+            totalDia += v.total;
+        }
+        return `
+            <div class="venta-item">
+                <div class="venta-header">
+                    <span>${v.tipo.toUpperCase()} N° ${v.numero}</span>
+                    <span>S/ ${v.total.toFixed(2)}</span>
+                </div>
+                <div class="venta-detalle">
+                    <span>👤 ${v.cliente}</span>
+                    <span>💳 ${v.metodoPago.toUpperCase()}</span>
+                    <span>📅 ${fechaVenta.toLocaleDateString('es-PE')}</span>
+                </div>
             </div>
-            <div class="venta-detalle">
-                <span>${v.cliente} | ${v.metodoPago.toUpperCase()}</span>
-                <span>${new Date(v.fecha).toLocaleDateString()}</span>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+    
+    totalHoy.textContent = `S/ ${totalDia.toFixed(2)}`;
 }
 
 function actualizarNumeroFactura() {
     const tipo = document.getElementById('tipoDocumento').value;
     const prefix = tipo === 'boleta' ? 'B' : 'F';
-    numeroFactura = ventas.length + 1;
-    document.getElementById('numeroDoc').value = `${prefix}001-${String(numeroFactura).padStart(4, '0')}`;
+    const numero = ventas.length + 1;
+    document.getElementById('numeroDoc').value = `${prefix}001-${String(numero).padStart(4, '0')}`;
 }
 
 // ============================================
@@ -591,7 +695,6 @@ function actualizarNumeroFactura() {
 // ============================================
 
 function actualizarReportes() {
-    // Resumen
     const totalVentas = ventas.reduce((sum, v) => sum + v.total, 0);
     document.getElementById('totalVentasReporte').textContent = `S/ ${totalVentas.toFixed(2)}`;
     document.getElementById('numVentasReporte').textContent = ventas.length;
@@ -599,7 +702,6 @@ function actualizarReportes() {
     const totalProductos = productosVendidos.reduce((sum, p) => sum + p.cantidad, 0);
     document.getElementById('productosVendidosReporte').textContent = totalProductos;
     
-    // Gráficos (usando canvas)
     graficarVentas();
     graficarProductos();
     graficarPagos();
@@ -608,7 +710,7 @@ function actualizarReportes() {
 function graficarVentas() {
     const ctx = document.getElementById('graficoVentas').getContext('2d');
     const ultimasVentas = ventas.slice(-7);
-    const labels = ultimasVentas.map(v => new Date(v.fecha).toLocaleDateString());
+    const labels = ultimasVentas.map(v => new Date(v.fecha).toLocaleDateString('es-PE'));
     const data = ultimasVentas.map(v => v.total);
     
     new Chart(ctx, {
@@ -618,15 +720,19 @@ function graficarVentas() {
             datasets: [{
                 label: 'Ventas (S/)',
                 data: data.length ? data : [0],
-                backgroundColor: '#2e7d32',
+                backgroundColor: ['#2e7d32', '#43a047', '#66bb6a', '#81c784', '#a5d6a7', '#c8e6c9', '#e8f5e9'],
                 borderColor: '#1b5e20',
-                borderWidth: 1
+                borderWidth: 2,
+                borderRadius: 6
             }]
         },
         options: {
             responsive: true,
             plugins: {
                 legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
             }
         }
     });
@@ -639,8 +745,9 @@ function graficarProductos() {
         return acc;
     }, {});
     
-    const labels = Object.keys(topProductos).slice(0, 5);
-    const data = Object.values(topProductos).slice(0, 5);
+    const sorted = Object.entries(topProductos).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const labels = sorted.map(item => item[0]);
+    const data = sorted.map(item => item[1]);
     
     new Chart(ctx, {
         type: 'pie',
@@ -648,13 +755,14 @@ function graficarProductos() {
             labels: labels.length ? labels : ['Sin datos'],
             datasets: [{
                 data: data.length ? data : [1],
-                backgroundColor: ['#2e7d32', '#4caf50', '#81c784', '#a5d6a7', '#c8e6c9']
+                backgroundColor: ['#1b5e20', '#2e7d32', '#43a047', '#66bb6a', '#81c784'],
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { position: 'bottom', labels: { font: { size: 11 } } }
             }
         }
     });
@@ -670,19 +778,28 @@ function graficarPagos() {
     const labels = Object.keys(pagos);
     const data = Object.values(pagos);
     
+    const colores = {
+        efectivo: '#2e7d32',
+        yape: '#ffc107',
+        plin: '#2196f3',
+        transferencia: '#9c27b0',
+        tarjeta: '#ff5722'
+    };
+    
     new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels.length ? labels.map(l => l.toUpperCase()) : ['Sin datos'],
             datasets: [{
                 data: data.length ? data : [1],
-                backgroundColor: ['#2e7d32', '#ffc107', '#2196f3', '#ff5722']
+                backgroundColor: labels.map(l => colores[l] || '#666'),
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { position: 'bottom', labels: { font: { size: 11 } } }
             }
         }
     });
@@ -700,7 +817,7 @@ function guardarConfiguracion() {
     configEmpresa.email = document.getElementById('empEmail').value;
     
     guardarDatos();
-    alert('✅ Configuración guardada exitosamente');
+    mostrarAlerta('✅ Configuración guardada exitosamente', 'success');
 }
 
 function cargarLogo(event) {
@@ -711,12 +828,17 @@ function cargarLogo(event) {
             document.getElementById('logoPreview').src = e.target.result;
             configEmpresa.logo = e.target.result;
             guardarDatos();
+            mostrarAlerta('✅ Logo actualizado', 'success');
         };
         reader.readAsDataURL(file);
     }
 }
 
 function mostrarModalUsuario() {
+    if (usuarioActual && usuarioActual.rol === 'vendedor') {
+        mostrarAlerta('❌ Solo el propietario puede gestionar usuarios', 'error');
+        return;
+    }
     document.getElementById('modalUsuario').style.display = 'flex';
     document.getElementById('formUsuario').reset();
 }
@@ -727,20 +849,25 @@ function cerrarModalUsuario() {
 
 document.getElementById('formUsuario').addEventListener('submit', function(e) {
     e.preventDefault();
-    const usuario = document.getElementById('nuevoUsuario').value;
-    const password = document.getElementById('nuevaPassword').value;
+    const usuario = document.getElementById('nuevoUsuario').value.trim();
+    const password = document.getElementById('nuevaPassword').value.trim();
     const rol = document.getElementById('nuevoRol').value;
     
+    if (!usuario || !password) {
+        mostrarAlerta('⚠️ Complete todos los campos', 'error');
+        return;
+    }
+    
     if (usuarios[usuario]) {
-        alert('⚠️ Este usuario ya existe');
+        mostrarAlerta('⚠️ Este usuario ya existe', 'error');
         return;
     }
     
     usuarios[usuario] = { password, rol };
     guardarDatos();
     cerrarModalUsuario();
-    alert('✅ Usuario agregado exitosamente');
     actualizarListaUsuarios();
+    mostrarAlerta('✅ Usuario agregado exitosamente', 'success');
 });
 
 function actualizarListaUsuarios() {
@@ -780,6 +907,7 @@ function limpiarFactura() {
     const inputs = tbody.querySelectorAll('input');
     inputs.forEach(input => {
         input.addEventListener('input', calcularTotales);
+        input.addEventListener('change', calcularTotales);
     });
     
     calcularTotales();
@@ -787,44 +915,12 @@ function limpiarFactura() {
 }
 
 // ============================================
-// PERSISTENCIA (localStorage)
-// ============================================
-
-function guardarDatos() {
-    const datos = {
-        productos,
-        ventas,
-        productosVendidos,
-        configEmpresa,
-        usuarios
-    };
-    localStorage.setItem('agroNexusData', JSON.stringify(datos));
-}
-
-function cargarDatos() {
-    const saved = localStorage.getItem('agroNexusData');
-    if (saved) {
-        try {
-            const datos = JSON.parse(saved);
-            productos = datos.productos || productos;
-            ventas = datos.ventas || [];
-            productosVendidos = datos.productosVendidos || [];
-            configEmpresa = datos.configEmpresa || configEmpresa;
-            // No sobrescribir usuarios por seguridad
-        } catch (e) {
-            console.log('Error al cargar datos');
-        }
-    }
-}
-
-// ============================================
 // INICIALIZACIÓN
 // ============================================
 
-cargarDatos();
-actualizarListaUsuarios();
+document.getElementById('tipoDocumento').addEventListener('change', actualizarNumeroFactura);
 
-// Cargar configuración en el formulario
+// Cargar configuración
 document.getElementById('empNombre').value = configEmpresa.nombre;
 document.getElementById('empRuc').value = configEmpresa.ruc;
 document.getElementById('empDireccion').value = configEmpresa.direccion;
@@ -832,13 +928,10 @@ document.getElementById('empTelefono').value = configEmpresa.telefono;
 document.getElementById('empEmail').value = configEmpresa.email;
 document.getElementById('logoPreview').src = configEmpresa.logo;
 
-// Evento para cambiar tipo documento
-document.getElementById('tipoDocumento').addEventListener('change', actualizarNumeroFactura);
-
-// Inicializar factura
+actualizarListaUsuarios();
 limpiarFactura();
 
-console.log('🌱 Agro Nexus SAC - Sistema de Facturación cargado exitosamente');
-console.log('👤 Usuarios:', Object.keys(usuarios));
+console.log('🌱 Agro Nexus SAC - Sistema de Facturación');
 console.log('📦 Productos:', productos.length);
 console.log('🧾 Ventas:', ventas.length);
+console.log('👤 Usuarios:', Object.keys(usuarios));
